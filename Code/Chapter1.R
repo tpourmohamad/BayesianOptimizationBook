@@ -13,6 +13,8 @@ library(scatterplot3d)
 ####################################################
 ### Chapter 1 Code
 
+
+### Section 1.2 ###
 ### Figure 1.7
 n <- 10000
 X <- lhs(n, rbind(c(0, 90), c(0, 90), c(2e-06, 4e-06), c(0.1, 0.2),
@@ -98,7 +100,7 @@ for(i in 1:8){
 
 out <- do.call(grid.arrange,plots)
 
-
+### Section 1.3 ###
 ### Figure 1.9
 n <- 4
 x1 <- (c(1, 4, 3, 2) - .5) / n
