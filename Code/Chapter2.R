@@ -15,7 +15,121 @@ library(scatterplot3d)
 
 
 ### Section 2.1 ###
+### Figure 2.1
+x <- seq(0, 5, .01)
+tau <- as.matrix(dist(x, diag = T, upper = T))
+color <- c("black","red","blue","green")
 
+par( ps = 15)
+plot(x, x, type = 'n', ylim = c(-3, 3), xlim = c(0, 5), 
+     ylab = "Y(x)", main = "")
+R <- exp((-abs(tau)^2)) # Squared Exponential
+
+for(i in 1:4){
+  y <- rmvnorm(1, rep(0, length(x)), R, method = "svd")
+  lines(x, y, col = color[i])
+}
+
+plot(x, x, type = 'n', ylim = c(-3, 3), xlim = c(0, 5),
+     ylab = "Y(x)", main = "")
+R <- exp((-abs(tau))) # Powered Exponential
+
+for(i in 1:4){
+  y <- rmvnorm(1, rep(0, length(x)), R, method = "svd")
+  lines(x, y, col = color[i])
+}
+
+plot(x, x, type = 'n', ylim = c(-3, 3), xlim = c(0, 5),
+     ylab = "Y(x)", main = "")
+R <- exp(tau * besselJ(tau, 1)) # Matern
+diag(R) <- 1
+
+for(i in 1:4){
+  y <- rmvnorm(1, rep(0, length(x)), R, method = "svd")
+  lines(x, y, col = color[i])
+}
+
+
+### Figure 2.2
+f <- function(x) exp(-1.4 * x) * cos(7 * pi * x / 2)
+n <- 7
+x <- lhs(n, c(0, 1))  
+fx <- f(x)
+
+gp <- newGP(x, fx, 0.015, 1e-6, dK = TRUE)
+xx <- matrix(seq(0, 1, .001), ncol = 1)
+preds <- predGP(gp, xx)
+deleteGP(gp)
+
+N <- 100
+y <- rmvt(N, preds$Sigma, preds$df)
+y <- y + t(matrix(rep(preds$mean, N), ncol = N))
+
+par( ps = 15 )
+matplot(xx, t(y), col = "gray", lwd = 0.5, lty = 1, type = "l",
+        xlab = "x", ylab = "f(x)")
+lines(xx, f(xx), lwd = 2)
+lines(xx, preds$mean, col = "red", lwd = 2, lty = 2)
+points(x, fx, pch = 21, bg = "red")
+legend("topright", c("f(x)","Mean", "GP Realizations", "Data"),
+       lty = c(1, 2, 1, NA), pch = c(NA, NA, NA, 19), 
+       col = c("black", "red", "gray", "red"), bty = "n")
+
+
+### Figure 2.3
+f <- function(x1, x2) -(cos((x1 - .1) * x2))^2 - x1 * sin(3 * x1 + x2)
+n <- 20
+x <- lhs(n, rbind(c(-2.25, 2.5), c(-2.5, 1.75)))
+fx <- f(x[,1], x[,2])
+
+da <- darg(list(mle = TRUE), x)
+ga <- garg(list(mle = TRUE), fx)
+gp <- newGP(x, fx, da$start, ga$start, dK = TRUE)
+
+x1 <- seq(-2.25, 2.5, .05)
+x2 <- seq(-2.5, 1.75, .05)
+xx <- expand.grid(x1, x2)
+preds <- predGP(gp, xx, nonug=TRUE)
+deleteGP(gp)
+
+out <- outer(x1, x2, f)
+par(ps=15)
+image(x1, x2, out, xlab = expression(x[1]), ylab = expression(x[2]),
+      main = "True Function")
+points(x[,1], x[,2])
+par(ps=15)
+image(x1, x2, matrix(preds$mean, nrow = length(x1)), xlab = expression(x[1]), 
+      ylab = expression(x[2]), main = "Mean")
+par(ps=15)
+image(x1, x2, matrix(sqrt(diag(preds$Sigma)), nrow = length(x1)),
+      xlab = expression(x[1]), ylab = expression(x[2]),
+      main = "Standard Deviation")
+points(x[,1], x[,2])
+
+
+### Figure 2.4
+f <- function(x) exp(-1.4 * x) * cos(7 * pi * x / 2)
+n <- 7
+x <- lhs(n, c(0, 1))  
+fx <- f(x)
+
+gp <- newGP(x, fx, d = 0.05, g = 1e-6, dK = TRUE)
+xx <- matrix(seq(0, 1, .001), ncol = 1)
+preds <- predGP(gp, xx)
+deleteGP(gp)
+
+N <- 100
+y <- rmvnorm(N, preds$mean, preds$Sigma)
+
+par( ps = 15 )
+matplot(xx, t(y), col = "gray", lwd = 0.5, lty = 1, type = "l",
+        xlab = "x", ylab = "f(x)")
+lines(xx, f(xx), lwd = 2)
+lines(xx, preds$mean, col = "red", lwd = 2, lty = 2)
+points(x, fx, pch = 21, bg = "red")
+legend("topright", c("f(x)","Mean", "GP Realizations", "Data"),
+       lty = c(1, 2, 1, NA), pch = c(NA, NA, NA, 19), 
+       col = c("black", "red", "gray", "red"), bty = "n")
 
 
 ### Section 2.2 ###
