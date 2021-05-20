@@ -1068,3 +1068,343 @@ abline(h = f(4.42124), lty = 2, lwd = 2)
 legend("topright", c("Average Solution","Global Solution"), lty = 1:2, bty = "n")
 
 
+
+####################################################
+### Section 3.4 ###
+### Figures 3.29 and 3.30
+
+f <- function(X){
+  X[,1] <- ifelse(X[,1] > 90, 90, ifelse(X[,1] < 0, 0, X[,1]))
+  X[,2] <- ifelse(X[,2] > 90, 90, ifelse(X[,2] < 0, 0, X[,2]))
+  X[,3] <- ifelse(X[,3] > 4e-6, 4e-6, ifelse(X[,3] < 2e-6, 2e-6, X[,3]))
+  X[,4] <- ifelse(X[,4] > .2, .2, ifelse(X[,4] < .1, .1, X[,4]))
+  X[,5] <- ifelse(X[,5] > .02, .02, ifelse(X[,5] < .01, .01, X[,5]))
+  X[,6] <- ifelse(X[,6] > .02, .02, ifelse(X[,6] < .01, .01, X[,6]))
+  X[,7] <- ifelse(X[,7] > 2, 2, ifelse(X[,7] < 1, 1, X[,7]))
+  X[,8] <- ifelse(X[,8] > 10, 10, ifelse(X[,8] < 5, 5, X[,8]))
+  
+  ans <- rep(NA, nrow(X))
+  for(i in 1:length(ans)){
+    ans[i] <- -sprinkler(X[i,1], X[i,2], X[i,3], X[i,4],
+                        X[i,5], X[i,6], X[i,7], X[i,8])$obj[3]
+  }
+  return(ans)
+}
+
+
+#Code taken and adapted from Surrogates (2020) by Bobby Gramacy
+PI <- function(gpi, x, fmin, pred = predGPsep){
+  if(is.null(nrow(x))) x <- matrix(x, nrow=1)
+  p <- pred(gpi, x, lite=TRUE)
+  d <- fmin - p$mean
+  sigma <- sqrt(p$s2)
+  dn <- d / sigma
+  pi <- pnorm(dn)
+  return(pi)
+}
+
+EI <- function(gpi, x, fmin, pred = predGPsep){
+  if(is.null(nrow(x))) x <- matrix(x, nrow=1)
+  p <- pred(gpi, x, lite=TRUE)
+  d <- fmin - p$mean
+  sigma <- sqrt(p$s2)
+  dn <- d / sigma
+  ei <- d * pnorm(dn) + sigma * dnorm(dn)
+  return(ei)
+}
+
+LCB <- function(gpi, x, fmin, pred = predGPsep){
+  if(is.null(nrow(x))) x <- matrix(x, nrow=1)
+  beta = 2
+  p <- pred(gpi, x, lite=TRUE)
+  mu <- p$mean
+  sigma <- sqrt(p$s2)
+  lcb <- -mu + beta*sigma
+  return(lcb)
+}
+
+
+obj.PI <- function(x, fmin, gpi, pred=predGPsep)
+  - PI(gpi, x, fmin, pred)
+
+obj.EI <- function(x, fmin, gpi, pred=predGPsep)
+  - EI(gpi, x, fmin, pred)
+
+obj.LCB <- function(x, fmin, gpi, pred=predGPsep)
+  - LCB(gpi, x, fmin, pred)
+
+eps <- sqrt(.Machine$double.eps) ## used lots below
+
+PI.search <- function(X, y, gpi, pred=predGPsep, multi.start=5, tol=eps){
+  m <- which.min(y)
+  fmin <- y[m]
+  start <- matrix(X[m,], nrow=1)
+  if(multi.start > 1)
+    start <- rbind(start, lhs(multi.start - 1, rbind(c(0,90), c(0,90), c(2e-6,4e-6), c(.1,.2),
+                                                     c(.01,.02), c(.01,.02), c(1,2), c(5,10))))
+  xnew <- matrix(NA, nrow = nrow(start), ncol = ncol(X) + 1)
+  for(i in 1:nrow(start)) {
+    if(PI(gpi, start[i,], fmin) <= tol) { out <- list(value = -Inf); next }
+    out <- optim(start[i,], obj.PI, method = "L-BFGS-B",
+                 lower = c(0, 0, 2e-6, .1, .01, .01, 1, 5), 
+                 upper = c(90, 90, 4e-6, .2, .02, .02, 2, 10), 
+                 gpi = gpi, pred = pred, fmin = fmin)
+    xnew[i,] <- c(out$par, -out$value)
+  }
+  solns <- data.frame(cbind(start, xnew))
+  names(solns) <- c("s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8",
+                    "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "val")
+  solns <- solns[solns$val > tol,]
+  return(solns)
+}
+
+EI.search <- function(X, y, gpi, pred=predGPsep, multi.start=5, tol=eps){
+  m <- which.min(y)
+  fmin <- y[m]
+  start <- matrix(X[m,], nrow=1)
+  if(multi.start > 1)
+    start <- rbind(start, lhs(multi.start - 1, rbind(c(0,90), c(0,90), c(2e-6,4e-6), c(.1,.2),
+                                                     c(.01,.02), c(.01,.02), c(1,2), c(5,10))))
+  xnew <- matrix(NA, nrow = nrow(start), ncol = ncol(X) + 1)
+  for(i in 1:nrow(start)) {
+    if(EI(gpi, start[i,], fmin) <= tol) { out <- list(value = -Inf); next }
+    out <- optim(start[i,], obj.EI, method = "L-BFGS-B",
+                 lower = c(0, 0, 2e-6, .1, .01, .01, 1, 5), 
+                 upper = c(90, 90, 4e-6, .2, .02, .02, 2, 10), 
+                 gpi = gpi, pred = pred, fmin = fmin)
+    xnew[i,] <- c(out$par, -out$value)
+  }
+  solns <- data.frame(cbind(start, xnew))
+  names(solns) <- c("s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8",
+                    "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "val")
+  solns <- solns[solns$val > tol,]
+  return(solns)
+}
+
+LCB.search <- function(X, y, gpi, pred=predGPsep, multi.start=5, tol=eps){
+  m <- which.min(y)
+  fmin <- y[m]
+  start <- matrix(X[m,], nrow=1)
+  if(multi.start > 1)
+    start <- rbind(start, lhs(multi.start - 1, rbind(c(0,90), c(0,90), c(2e-6,4e-6), c(.1,.2),
+                                                     c(.01,.02), c(.01,.02), c(1,2), c(5,10))))
+  xnew <- matrix(NA, nrow = nrow(start), ncol = ncol(X) + 1)
+  for(i in 1:nrow(start)) {
+    if(LCB(gpi, start[i,], fmin) <= tol) { out <- list(value = -Inf); next }
+    out <- optim(start[i,], obj.LCB, method = "L-BFGS-B",
+                 lower = c(0, 0, 2e-6, .1, .01, .01, 1, 5), 
+                 upper = c(90, 90, 4e-6, .2, .02, .02, 2, 10), 
+                 gpi = gpi, pred = pred, fmin = fmin)
+    xnew[i,] <- c(out$par, -out$value)
+  }
+  solns <- data.frame(cbind(start, xnew))
+  names(solns) <- c("s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8",
+                    "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "val")
+  solns <- solns[solns$val > tol,]
+  return(solns)
+}
+
+
+optim.PI <- function(f, ninit, end, seed){
+  ## initialization
+  set.seed(seed)
+  X <- lhs(ninit, rbind(c(0, 90), c(0, 90), c(2e-6, 4e-6), c(.1, .2),
+                        c(.01, .02), c(.01, .02), c(1, 2), c(5, 10)))
+  y <- f(X)
+  gpi <- newGPsep(X, y, d = 0.1, g = 1e-6, dK = TRUE)
+  da <- darg(list(mle = TRUE), lhs(1000, rbind(c(0,90), c(0,90), c(2e-6,4e-6), c(.1,.2),
+                                               c(.01,.02), c(.01,.02), c(1,2), c(5,10))))
+  mleGPsep(gpi, param = "d", tmin = da$min, tmax = da$max, ab = da$ab)
+  ## optimization loop of sequential acquisitions
+  maxpi <- c()
+  for(i in (ninit + 1):end) {
+    solns <- PI.search(X, y, gpi)
+    m <- which.max(solns$val)
+    maxpi <- c(maxpi, solns$val[m])
+    xnew <- as.matrix(solns[m, 9:16])
+    ynew <- f(xnew)
+    updateGPsep(gpi, xnew, ynew)
+    mleGPsep(gpi, param = "d", tmin = da$min, tmax = da$max, ab = da$ab)
+    X <- rbind(X, xnew)
+    y <- c(y, ynew)
+  }
+  ## clean up and return
+  deleteGPsep(gpi)
+  return(list(X = X, y = y, maxpi = maxpi))
+}
+
+optim.EI <- function(f, ninit, end, seed){
+  ## initialization
+  set.seed(seed)
+  X <- lhs(ninit, rbind(c(0, 90), c(0, 90), c(2e-6, 4e-6), c(.1, .2),
+                        c(.01, .02), c(.01, .02), c(1, 2), c(5, 10)))
+  y <- f(X)
+  gpi <- newGPsep(X, y, d = 0.1, g = 1e-6, dK = TRUE)
+  da <- darg(list(mle = TRUE), lhs(1000, rbind(c(0,90), c(0,90), c(2e-6,4e-6), c(.1,.2),
+                                               c(.01,.02), c(.01,.02), c(1,2), c(5,10))))
+  mleGPsep(gpi, param = "d", tmin = da$min, tmax = da$max, ab = da$ab)
+  ## optimization loop of sequential acquisitions
+  maxei <- c()
+  for(i in (ninit + 1):end) {
+    solns <- EI.search(X, y, gpi)
+    m <- which.max(solns$val)
+    maxei <- c(maxei, solns$val[m])
+    xnew <- as.matrix(solns[m, 9:16])
+    ynew <- f(xnew)
+    updateGPsep(gpi, xnew, ynew)
+    mleGPsep(gpi, param = "d", tmin = da$min, tmax = da$max, ab = da$ab)
+    X <- rbind(X, xnew)
+    y <- c(y, ynew)
+  }
+  ## clean up and return
+  deleteGPsep(gpi)
+  return(list(X = X, y = y, maxei = maxei))
+}
+
+optim.LCB <- function(f, ninit, end, seed){
+  ## initialization
+  set.seed(seed)
+  X <- lhs(ninit, rbind(c(0, 90), c(0, 90), c(2e-6, 4e-6), c(.1, .2),
+                     c(.01, .02), c(.01, .02), c(1, 2), c(5, 10)))
+  y <- f(X)
+  gpi <- newGPsep(X, y, d = 0.1, g = 1e-6, dK = TRUE)
+  da <- darg(list(mle = TRUE), lhs(1000, rbind(c(0,90), c(0,90), c(2e-6,4e-6), c(.1,.2),
+                                             c(.01,.02), c(.01,.02), c(1,2), c(5,10))))
+  mleGPsep(gpi, param = "d", tmin = da$min, tmax = da$max, ab = da$ab)
+  ## optimization loop of sequential acquisitions
+  maxlcb <- c()
+  for(i in (ninit + 1):end) {
+    solns <- LCB.search(X, y, gpi)
+    m <- which.max(solns$val)
+    maxlcb <- c(maxlcb, solns$val[m])
+    xnew <- as.matrix(solns[m, 9:16])
+    ynew <- f(xnew)
+    updateGPsep(gpi, xnew, ynew)
+    mleGPsep(gpi, param = "d", tmin = da$min, tmax = da$max, ab = da$ab)
+    X <- rbind(X, xnew)
+    y <- c(y, ynew)
+  }
+  ## clean up and return
+  deleteGPsep(gpi)
+  return(list(X = X, y = y, maxlcb = maxlcb))
+}
+
+bov <- function(y, end = length(y)){
+  prog <- rep(min(y), end)
+  prog[1:min(end, length(y))] <- y[1:min(end, length(y))]
+  for(i in 2:end)
+    if(is.na(prog[i]) || prog[i] > prog[i-1]) prog[i] <- prog[i-1]
+  return(prog)
+}
+
+
+N = 1000000
+X = lhs(N, rbind(c(0,90), c(0,90), c(2e-6,4e-6), c(.1,.2),
+                 c(.01,.02), c(.01,.02), c(1,2), c(5,10)))
+ans = f(X)
+
+# Best solution based on random sampling of N = 1000000 inputs
+min(ans)
+X[which.min(ans),]
+
+
+# Monte Carlo experiment setup
+ninit <- 10
+end <- 100
+reps <- 30
+
+# Solutions based on PI
+prog.pi <- matrix(NA, nrow=reps, ncol=end)
+for(r in 1:reps) {
+  os <- optim.PI(f, ninit, end, seed = r)
+  prog.pi[r,] <- bov(os$y)
+}
+
+# Solutions based on EI
+prog.ei <- matrix(NA, nrow=reps, ncol=end)
+for(r in 1:reps) {
+  os <- optim.EI(f, ninit, end, seed = r)
+  prog.ei[r,] <- bov(os$y)
+}
+
+
+# Solutions based on LCB
+prog.lcb <- matrix(NA, nrow=reps, ncol=end)
+for(r in 1:reps) {
+  os <- optim.LCB(f, ninit, end, seed = r)
+  prog.lcb[r,] <- bov(os$y)
+}
+
+# Solutions based on random search
+prog.rs <- matrix(NA, nrow=reps, ncol=end)
+for(r in 1:reps) {
+set.seed(r)
+X <- lhs(ninit, rbind(c(0, 90), c(0, 90), c(2e-6, 4e-6), c(.1, .2),
+                      c(.01, .02), c(.01, .02), c(1, 2), c(5, 10)))
+Y <- lhs(end - ninit, rbind(c(0, 90), c(0, 90), c(2e-6, 4e-6), c(.1, .2),
+                      c(.01, .02), c(.01, .02), c(1, 2), c(5, 10)))
+X <- rbind(X, Y)
+os <- f(X)
+prog.rs[r,] <- bov(os)
+}
+
+
+par( ps = 15)
+plot(colMeans(prog.ei), col=1, lwd=2, type="l",
+     xlab="black-box evaluations (n)", ylab="average best objective value",
+     ylim = c(min(colMeans(prog.pi), colMeans(prog.ei), colMeans(prog.lcb)),
+     max(colMeans(prog.rs))))
+lines(colMeans(prog.rs), col="red", lwd=2)
+lines(colMeans(prog.pi), col="grey", lwd=2)
+lines(colMeans(prog.lcb), col="deepskyblue", lwd=2)
+abline(v=ninit, lty=2)
+legend("topright", c(expression(a[RS]*"(x)"), expression(a[PI]*"(x)"), 
+                     expression(a[EI]*"(x)"), expression(a[LCB]*"(x;"*beta*")"),
+                     "Initial n"),
+       col=c("red", "grey", "black", "deepskyblue","black"), lwd=c(2,2,2,2,1), 
+       lty = c(1,1,1,1,2), bty="n")
+
+
+par( ps = 15)
+matplot(t(prog.pi), col="grey", lty = 1,  type="l", ylim = c(-20, 0),
+     xlab="black-box evaluations (n)", ylab="best objective value",
+     main = "Probability of Improvement")
+
+
+par( ps = 15)
+matplot(t(prog.ei), col="black", lty = 1,  type="l", ylim = c(-20, 0),
+        xlab="black-box evaluations (n)", ylab="best objective value",
+        main = "Expected Improvement")
+
+
+par( ps = 15)
+matplot(t(prog.lcb), col="deepskyblue", lty = 1,  type="l", ylim = c(-20, 0),
+        xlab="black-box evaluations (n)", ylab="best objective value",
+        main = "Lower Confidence Bound")
+
+
+par( ps = 15)
+matplot(t(prog.rs), col="red", lty = 1,  type="l", ylim = c(-20, 0),
+        xlab="black-box evaluations (n)", ylab="best objective value",
+        main = "Random Search")
+
+
+### Table 3.1
+min(prog.rs)
+min(colMeans(prog.rs))
+max(prog.rs[,100])
+
+min(prog.pi)
+min(colMeans(prog.pi))
+max(prog.pi[,100])
+
+min(prog.ei)
+min(colMeans(prog.ei))
+max(prog.ei[,100])
+
+min(prog.lcb)
+min(colMeans(prog.lcb))
+max(prog.lcb[,100])
+
+
+
