@@ -132,10 +132,81 @@ legend("topright", c("f(x)","Mean", "GP Realizations", "Data"),
        col = c("black", "red", "gray", "red"), bty = "n")
 
 
+
+####################################################
 ### Section 2.2 ###
+### Figure 2.5
+
+f <- function(x) exp(-1.4 * x) * cos(7 * pi * x / 2)
+n <- 7
+x <- lhs(n, c(0, 1))  
+fx <- f(x)
+
+xx <- matrix(seq(0, 1, .001), ncol = 1)
+tgp.fit <- btgp(x, fx, xx, zcov = TRUE, d.p=c(100,2000,100,2000), d.lam="fixed", nug.p=0, gd=c(1e-6,0.5))  #fix the nugget to 1e-6, and set a prior for the range comparable to the GP example
+
+N <- 100
+y <- rmvnorm(N, tgp.fit$ZZ.mean, tgp.fit$ZZ.s2)
+
+par( ps = 15 )
+matplot(xx, t(y), col = "gray", lwd = 0.5, lty = 1, type = "l",
+        xlab = "x", ylab = "f(x)")
+lines(xx, f(xx), lwd = 2)
+lines(xx, tgp.fit$ZZ.mean, col = "red", lwd = 2, lty = 2)
+points(x, fx, pch = 21, bg = "red")
+legend("topright", c("f(x)","Mean", "TGP Realizations", "Data"),
+       lty = c(1, 2, 1, NA), pch = c(NA, NA, NA, 19), 
+       col = c("black", "red", "gray", "red"), bty = "n")
+
+
+### Figure 2.6
+f <- function(x) 1 * (x < 1) * exp(-1.4 * x) * cos(7 * pi * x / 2) + 1 * (x >= 1) * (x - 1)
+n <- 24
+x <- lhs(n, c(0, 2))  
+fx <- f(x)
+
+xx <- matrix(seq(0, 2, .001), ncol = 1)
+tgp.fit <- btgp(x, fx, xx, zcov = TRUE, nug.p=0, gd=c(1e-6,0.5))  #fix the nugget to 1e-6
+
+N <- 100
+y <- rmvnorm(N, tgp.fit$ZZ.mean, tgp.fit$ZZ.s2)
+
+par( ps = 15 )
+matplot(xx, t(y), col = "gray", lwd = 0.5, lty = 1, type = "l",
+        xlab = "x", ylab = "f(x)")
+lines(xx, f(xx), lwd = 2)
+lines(xx, tgp.fit$ZZ.mean, col = "red", lwd = 2, lty = 2)
+points(x, fx, pch = 21, bg = "red")
+legend("topright", c("f(x)","Mean", "TGP Realizations", "Data"),
+       lty = c(1, 2, 1, NA), pch = c(NA, NA, NA, 19), 
+       col = c("black", "red", "gray", "red"), bty = "n")
+
+
+### Figure 2.7
+f <- function(x) 1 * (x < 1) * exp(-1.4 * x) * cos(7 * pi * x / 2) + 1 * (x >= 1) * cos(2 * pi * x)
+n <- 24
+x <- lhs(n, c(0, 2))  
+fx <- f(x)
+
+xx <- matrix(seq(0, 2, .001), ncol = 1)
+tgp.fit <- btgp(x, fx, xx, zcov = TRUE, nug.p=0, gd=c(1e-6,0.5))  #fix the nugget to 1e-6
+
+N <- 100
+y <- rmvnorm(N, tgp.fit$ZZ.mean, tgp.fit$ZZ.s2)
+
+par( ps = 15 )
+matplot(xx, t(y), col = "gray", lwd = 0.5, lty = 1, type = "l",
+        xlab = "x", ylab = "f(x)")
+lines(xx, f(xx), lwd = 2)
+lines(xx, tgp.fit$ZZ.mean, col = "red", lwd = 2, lty = 2)
+points(x, fx, pch = 21, bg = "red")
+legend("topright", c("f(x)","Mean", "TGP Realizations", "Data"),
+       lty = c(1, 2, 1, NA), pch = c(NA, NA, NA, 19), 
+       col = c("black", "red", "gray", "red"), bty = "n")
 
 
 
+####################################################
 ### Section 2.3 ###
 ### Figure 2.8
 gauss <- function(r, c) exp(-(c * r)^2)
