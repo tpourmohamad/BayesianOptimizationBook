@@ -100,6 +100,8 @@ for(i in 1:8){
 
 out <- do.call(grid.arrange,plots)
 
+
+####################################################
 ### Section 1.3 ###
 ### Figure 1.9
 n <- 4
