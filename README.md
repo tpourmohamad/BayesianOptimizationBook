@@ -7,3 +7,4 @@ Compact and accessible, the volume is broken down into four chapters. Chapter 1 
 
 This will be a useful companion to researchers and practitioners working with computer experiments and computer modeling. Additionally, readers with a background in machine learning but minimal background in computer experiments will find this book an interesting case study of the applicability of Bayesian optimization outside the realm of machine learning.
 
+For more details about the book, please go to the following: https://link.springer.com/book/10.1007/978-3-030-82458-7
